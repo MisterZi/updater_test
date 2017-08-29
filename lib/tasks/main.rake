@@ -1,7 +1,8 @@
 namespace :main do
-  task update_shard_id!: :environment do |taskname|
+  desc 'Users shard_id updater'
+  task :update_shard_id, [:max_db_connections] => :environment do |taskname, args|
 
-    MAX_THREADS = 29
+    max_threads = args.max_db_connections.to_i > 0 ? args.max_db_connections.to_i : 4
 
     empty_shard_id_count = User.empty_shard_id_list.count
     fail_count = 0
@@ -12,30 +13,27 @@ namespace :main do
     loop do
       users = User.empty_shard_id_list
       if users.empty?
-        puts "DONE! All: #{empty_shard_id_count}; Updated: #{update_count}; Failed: #{fail_count}; Run time: #{humanize_time(Time.now - task_start_time)}"
+        print "\nDONE! Run time: #{humanize_time(Time.now - task_start_time)}\n"
         break
       end
       threads = []
       users.each do |user|
         threads << Thread.new do
           begin
-            user.shard_id = nil
+            user.shard_id = rand(1..10)
             user.save!
             update_count += 1
-          rescue Exception => e
+          rescue
             fail_count += 1
           end
         end
-        break if threads.count >= MAX_THREADS
+        break if threads.count >= max_threads
       end
       start_threads_time = Time.now
-      threads.each do |t|
-        t.join
-      end
+      threads.each(&:join)
       running_time += (Time.now - start_threads_time)
       time_remaining = running_time / (update_count + fail_count) * users.count
-      print "Average remaining time: #{humanize_time(time_remaining)}\r"
-      print "Average remaining time: #{humanize_time(time_remaining)}. HAVE SOME FAILED UPDATE!\r" if fail_count > 0
+      print "\rAll: #{empty_shard_id_count}; Updated: #{update_count}; Failed: #{fail_count}; Average remaining time: #{humanize_time(time_remaining)}"
     end
   end
 
