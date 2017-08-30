@@ -19,15 +19,14 @@ namespace :main do
       end
       threads = []
 
-      users.each do |user|
+      users.find_each(batch_size: max_threads) do |user|
         threads << Thread.new do
           begin
-            user.shard_id = rand(1..10)
-            user.save!
+            user.update_shard_id
             update_count += 1
           rescue
-            fail_count += 1
             failed_users << user.id
+            fail_count += 1
           end
         end
         break if threads.count >= max_threads

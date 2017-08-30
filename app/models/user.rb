@@ -8,4 +8,9 @@ class User < ApplicationRecord
     users.where('id NOT IN (?)', exclusion_ids)
   end
 
+  def update_shard_id
+    self.shard_id = rand(1..10)
+    save!
+  end
+
 end
