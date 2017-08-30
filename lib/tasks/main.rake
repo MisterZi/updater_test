@@ -5,18 +5,20 @@ namespace :main do
     max_threads = args.max_db_connections.to_i > 0 ? args.max_db_connections.to_i : 4
 
     empty_shard_id_count = User.empty_shard_id_list.count
+    failed_users = [0]
     fail_count = 0
     update_count = 0
     task_start_time = Time.now
     running_time = 0
 
     loop do
-      users = User.empty_shard_id_list
+      users = User.not_include(User.empty_shard_id_list, failed_users)
       if users.empty?
         print "\nDONE! Run time: #{humanize_time(Time.now - task_start_time)}\n"
         break
       end
       threads = []
+
       users.each do |user|
         threads << Thread.new do
           begin
@@ -25,14 +27,17 @@ namespace :main do
             update_count += 1
           rescue
             fail_count += 1
+            failed_users << user.id
           end
         end
         break if threads.count >= max_threads
       end
+
       start_threads_time = Time.now
       threads.each(&:join)
       running_time += (Time.now - start_threads_time)
       time_remaining = running_time / (update_count + fail_count) * users.count
+
       print "\rAll: #{empty_shard_id_count}; Updated: #{update_count}; Failed: #{fail_count}; Average remaining time: #{humanize_time(time_remaining)}"
     end
   end
