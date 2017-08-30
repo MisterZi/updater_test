@@ -2,7 +2,8 @@ namespace :main do
   desc 'Users shard_id updater'
   task :update_shard_id, [:max_db_connections] => :environment do |taskname, args|
 
-    max_threads = args.max_db_connections.to_i > 0 ? args.max_db_connections.to_i : 4
+    max_threads = args.max_db_connections.to_i > 0 ? args.max_db_connections.to_i : 5
+    max_threads -= 1
 
     empty_shard_id_count = User.empty_shard_id_list.count
     failed_users = [0]
